@@ -10,9 +10,10 @@ export const uploadvideo = async (req, res) => {
       const file = new video({
         videotitle: req.body.videotitle,
         filename: req.file.originalname,
-        filepath: req.file.path,
+        filepath: `/uploads/${req.file.filename}`,
         filetype: req.file.mimetype,
         filesize: req.file.size,
+        duration: Number(req.body.duration) || 0,
         videochannel: req.body.videochannel,
         uploader: req.body.uploader,
       });

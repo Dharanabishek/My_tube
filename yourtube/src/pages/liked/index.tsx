@@ -1,4 +1,3 @@
-import HistoryContent from "@/components/HistoryContent";
 import LikedContent from "@/components/LikedContent";
 import React, { Suspense, useEffect, useState } from "react";
 

@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
 import { MoreVertical, X, Clock, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import VideoThumbnail from "./VideoThumbnail";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +23,8 @@ export default function WatchLaterContent() {
   useEffect(() => {
     if (user) {
       loadWatchLater();
+    } else {
+      setLoading(false);
     }
   }, [user]);
 
@@ -31,24 +33,19 @@ export default function WatchLaterContent() {
 
     try {
       const watchLaterData = await axiosInstance.get(`/watch/${user?._id}`);
-
       setWatchLater(watchLaterData.data);
     } catch (error) {
-      console.error("Error loading history:", error);
+      console.error("Error loading watch later:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return <div>Loading watch later...</div>;
-  }
   const handleRemoveFromWatchLater = async (watchLaterId: string) => {
     try {
-      console.log("Removing from history:", watchLaterId);
       setWatchLater(watchLater.filter((item) => item._id !== watchLaterId));
     } catch (error) {
-      console.error("Error removing from history:", error);
+      console.error("Error removing from watch later:", error);
     }
   };
 
@@ -64,6 +61,10 @@ export default function WatchLaterContent() {
     );
   }
 
+  if (loading) {
+    return <div>Loading watch later...</div>;
+  }
+
   if (watchLater.length === 0) {
     return (
       <div className="text-center py-12">
@@ -75,7 +76,7 @@ export default function WatchLaterContent() {
       </div>
     );
   }
-  const videos = "/video/vdo.mp4";
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -91,9 +92,9 @@ export default function WatchLaterContent() {
           <div key={item._id} className="flex gap-4 group">
             <Link href={`/watch/${item.videoid._id}`} className="flex-shrink-0">
               <div className="relative w-40 aspect-video bg-gray-100 rounded overflow-hidden">
-                <video
-                  src={`${process.env.BACKEND_URL}/${item.videoid?.filepath}`}
-                  className="object-cover group-hover:scale-105 transition-transform duration-200"
+                <VideoThumbnail
+                  video={item.videoid}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                 />
               </div>
             </Link>
@@ -108,7 +109,7 @@ export default function WatchLaterContent() {
                 {item.videoid.videochannel}
               </p>
               <p className="text-sm text-gray-600">
-                {item.videoid.views.toLocaleString()} views •{" "}
+                {item.videoid.views.toLocaleString()} views -{" "}
                 {formatDistanceToNow(new Date(item.videoid.createdAt))} ago
               </p>
               <p className="text-xs text-gray-500 mt-1">

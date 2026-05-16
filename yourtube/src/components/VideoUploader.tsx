@@ -6,11 +6,13 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Progress } from "./ui/progress";
 import axiosInstance from "@/lib/axiosinstance";
+import { getFileVideoDuration } from "@/lib/video-meta";
 
 const VideoUploader = ({ channelId, channelName }: any) => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoDuration, setVideoDuration] = useState(0);
   const [videoTitle, setVideoTitle] = useState("");
   const [uploadComplete, setUploadComplete] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -27,6 +29,7 @@ const VideoUploader = ({ channelId, channelName }: any) => {
         return;
       }
       setVideoFile(file);
+      getFileVideoDuration(file).then(setVideoDuration);
       const filename = file.name;
       if (!videoTitle) {
         setVideoTitle(filename);
@@ -35,6 +38,7 @@ const VideoUploader = ({ channelId, channelName }: any) => {
   };
   const resetForm = () => {
     setVideoFile(null);
+    setVideoDuration(0);
     setVideoTitle("");
     setIsUploading(false);
     setUploadProgress(0);
@@ -58,6 +62,7 @@ const VideoUploader = ({ channelId, channelName }: any) => {
     formdata.append("videotitle", videoTitle);
     formdata.append("videochannel", channelName);
     formdata.append("uploader", channelId);
+    formdata.append("duration", String(videoDuration));
     console.log(formdata)
     try {
       setIsUploading(true);

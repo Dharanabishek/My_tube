@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
 import { MoreVertical, X, ThumbsUp, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import VideoThumbnail from "./VideoThumbnail";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +15,7 @@ import {
 import { useUser } from "@/lib/AuthContext";
 import axiosInstance from "@/lib/axiosinstance";
 
-export default function LikedVideosContent() {
+export default function LikedContent() {
   const [likedVideos, setLikedVideos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useUser();
@@ -23,6 +23,9 @@ export default function LikedVideosContent() {
   useEffect(() => {
     if (user) {
       loadLikedVideos();
+    } else {
+      setLikedVideos([]);
+      setLoading(false);
     }
   }, [user]);
 
@@ -30,8 +33,8 @@ export default function LikedVideosContent() {
     if (!user) return;
 
     try {
+      setLoading(true);
       const likedData = await axiosInstance.get(`/like/${user?._id}`);
-
       setLikedVideos(likedData.data);
     } catch (error) {
       console.error("Error loading liked videos:", error);
@@ -44,8 +47,15 @@ export default function LikedVideosContent() {
     if (!user) return;
 
     try {
-      console.log("Unliking video:", videoId, "for user:", user.id);
-      setLikedVideos(likedVideos.filter((item) => item._id !== likedVideoId));
+      const res = await axiosInstance.post(`/like/${videoId}`, {
+        userId: user?._id,
+      });
+
+      if (!res.data.liked) {
+        setLikedVideos(
+          likedVideos.filter((item) => item._id !== likedVideoId)
+        );
+      }
     } catch (error) {
       console.error("Error unliking video:", error);
     }
@@ -76,7 +86,7 @@ export default function LikedVideosContent() {
       </div>
     );
   }
-  const videos = "/video/vdo.mp4";
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -92,9 +102,9 @@ export default function LikedVideosContent() {
           <div key={item._id} className="flex gap-4 group">
             <Link href={`/watch/${item.videoid._id}`} className="flex-shrink-0">
               <div className="relative w-40 aspect-video bg-gray-100 rounded overflow-hidden">
-                <video
-                  src={`${process.env.BACKEND_URL}/${item.videoid?.filepath}`}
-                  className="object-cover group-hover:scale-105 transition-transform duration-200"
+                <VideoThumbnail
+                  video={item.videoid}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                 />
               </div>
             </Link>
@@ -109,7 +119,7 @@ export default function LikedVideosContent() {
                 {item.videoid.videochannel}
               </p>
               <p className="text-sm text-gray-600">
-                {item.videoid.views.toLocaleString()} views •{" "}
+                {item.videoid.views.toLocaleString()} views -{" "}
                 {formatDistanceToNow(new Date(item.videoid.createdAt))} ago
               </p>
               <p className="text-xs text-gray-500 mt-1">
