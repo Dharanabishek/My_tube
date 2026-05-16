@@ -4,6 +4,9 @@ const axiosInstance = axios.create({
     process.env.NEXT_PUBLIC_BACKEND_URL ||
     process.env.BACKEND_URL ||
     "http://localhost:5000",
+<<<<<<< HEAD
  
+=======
+>>>>>>> 9dcce21 (Mongodb database added)
 });
 export default axiosInstance;

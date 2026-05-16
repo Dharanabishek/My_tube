@@ -1,6 +1,6 @@
-import type { NextConfig } from "next";
+import process from 'process';
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   /* config options here */
   reactStrictMode: true,
   env: {

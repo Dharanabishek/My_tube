@@ -27,17 +27,32 @@ app.use("/watch", watchlaterroutes);
 app.use("/history", historyrroutes);
 app.use("/comment", commentroutes);
 const PORT = process.env.PORT || 5000;
+const DBURL = process.env.DB_URL;
 
-app.listen(PORT, () => {
-  console.log(`server running on port ${PORT}`);
+if (!DBURL) {
+  console.error("Missing DB_URL in environment. Please add DB_URL to server/.env.");
+  process.exit(1);
+}
+
+mongoose.set("strictQuery", false);
+console.log(`Connecting to MongoDB at ${DBURL}`);
+
+mongoose.connection.on("error", (err) => {
+  console.error("MongoDB connection error:", err);
 });
 
-const DBURL = process.env.DB_URL;
 mongoose
-  .connect(DBURL)
+  .connect(DBURL, {
+    serverSelectionTimeoutMS: 5000,
+    connectTimeoutMS: 5000,
+  })
   .then(() => {
-    console.log("Mongodb connected");
+    console.log("MongoDB successfully connected");
+    app.listen(PORT, () => {
+      console.log(`server running on port ${PORT}`);
+    });
   })
   .catch((error) => {
-    console.log(error);
+    console.error("MongoDB connection error:", error);
+    process.exit(1);
   });
