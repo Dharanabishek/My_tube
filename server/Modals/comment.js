@@ -11,8 +11,21 @@ const commentschema = mongoose.Schema(
       ref: "videofiles",
       required: true,
     },
-    commentbody: { type: String },
+    commentbody: { type: String, required: true },
     usercommented: { type: String },
+    city: { type: String, default: "Unknown city" },
+    likedBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user",
+      },
+    ],
+    dislikedBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user",
+      },
+    ],
     commentedon: { type: Date, default: Date.now },
   },
   {

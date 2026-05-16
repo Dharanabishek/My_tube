@@ -12,9 +12,10 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { useUser } from "@/lib/AuthContext";
 import axiosInstance from "@/lib/axiosinstance";
+import { formatViews } from "@/lib/video-meta";
 
 const VideoInfo = ({ video }: any) => {
-  const [likes, setlikes] = useState(video.Like || 0);
+  const [likes, setlikes] = useState(video.like ?? video.Like ?? 0);
   const [dislikes, setDislikes] = useState(video.Dislike || 0);
   const [isLiked, setIsLiked] = useState(false);
   const [isDisliked, setIsDisliked] = useState(false);
@@ -29,11 +30,31 @@ const VideoInfo = ({ video }: any) => {
   //   image: "https://github.com/shadcn.png?height=32&width=32",
   // };
   useEffect(() => {
-    setlikes(video.Like || 0);
+    setlikes(video.like ?? video.Like ?? 0);
     setDislikes(video.Dislike || 0);
     setIsLiked(false);
     setIsDisliked(false);
   }, [video]);
+
+  useEffect(() => {
+    const loadLikedStatus = async () => {
+      if (!user) {
+        setIsLiked(false);
+        return;
+      }
+
+      try {
+        const res = await axiosInstance.get(`/like/${user?._id}`);
+        setIsLiked(
+          res.data.some((item: any) => item.videoid?._id === video._id)
+        );
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    loadLikedStatus();
+  }, [user, video._id]);
 
   useEffect(() => {
     const handleviews = async () => {
@@ -50,25 +71,25 @@ const VideoInfo = ({ video }: any) => {
       }
     };
     handleviews();
-  }, [user]);
+  }, [user, video._id]);
   const handleLike = async () => {
     if (!user) return;
     try {
+      const wasLiked = isLiked;
       const res = await axiosInstance.post(`/like/${video._id}`, {
         userId: user?._id,
       });
-      if (res.data.liked) {
-        if (isLiked) {
-          setlikes((prev: any) => prev - 1);
-          setIsLiked(false);
-        } else {
-          setlikes((prev: any) => prev + 1);
-          setIsLiked(true);
-          if (isDisliked) {
-            setDislikes((prev: any) => prev - 1);
-            setIsDisliked(false);
-          }
-        }
+
+      setIsLiked(res.data.liked);
+      setlikes((prev: any) => {
+        if (res.data.liked && !wasLiked) return prev + 1;
+        if (!res.data.liked && wasLiked) return Math.max(prev - 1, 0);
+        return prev;
+      });
+
+      if (res.data.liked && isDisliked) {
+        setDislikes((prev: any) => Math.max(prev - 1, 0));
+        setIsDisliked(false);
       }
     } catch (error) {
       console.log(error);
@@ -91,21 +112,23 @@ const VideoInfo = ({ video }: any) => {
   const handleDislike = async () => {
     if (!user) return;
     try {
-      const res = await axiosInstance.post(`/like/${video._id}`, {
-        userId: user?._id,
-      });
-      if (!res.data.liked) {
-        if (isDisliked) {
-          setDislikes((prev: any) => prev - 1);
-          setIsDisliked(false);
-        } else {
-          setDislikes((prev: any) => prev + 1);
-          setIsDisliked(true);
-          if (isLiked) {
-            setlikes((prev: any) => prev - 1);
-            setIsLiked(false);
-          }
+      if (isLiked) {
+        const res = await axiosInstance.post(`/like/${video._id}`, {
+          userId: user?._id,
+        });
+
+        if (!res.data.liked) {
+          setlikes((prev: any) => Math.max(prev - 1, 0));
+          setIsLiked(false);
         }
+      }
+
+      if (isDisliked) {
+        setDislikes((prev: any) => Math.max(prev - 1, 0));
+        setIsDisliked(false);
+      } else {
+        setDislikes((prev: any) => prev + 1);
+        setIsDisliked(true);
       }
     } catch (error) {
       console.log(error);
@@ -194,7 +217,7 @@ const VideoInfo = ({ video }: any) => {
       </div>
       <div className="bg-gray-100 rounded-lg p-4">
         <div className="flex gap-4 text-sm font-medium mb-2">
-          <span>{video.views.toLocaleString()} views</span>
+          <span>{formatViews(video.views)}</span>
           <span>{formatDistanceToNow(new Date(video.createdAt))} ago</span>
         </div>
         <div className={`text-sm ${showFullDescription ? "" : "line-clamp-3"}`}>

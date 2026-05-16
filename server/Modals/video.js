@@ -27,6 +27,11 @@ const videoSchema = mongoose.Schema(
       required: true,
     },
 
+    duration: {
+      type: Number,
+      default: 0,
+    },
+
     videochannel: {
       type: String,
       required: true,

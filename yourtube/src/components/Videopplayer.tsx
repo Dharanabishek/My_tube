@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
+import { getMediaUrl } from "@/lib/media";
 
 interface VideoPlayerProps {
   video: {
@@ -14,7 +15,8 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Check if filepath is a YouTube URL
-  const isYouTubeUrl = video?.filepath?.includes("youtube.com");
+  const videoUrl = getMediaUrl(video?.filepath);
+  const isYouTubeUrl = videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be");
 
   if (isYouTubeUrl) {
     // For YouTube embed URLs
@@ -23,7 +25,7 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
         <iframe
           width="100%"
           height="100%"
-          src={video?.filepath}
+          src={videoUrl}
           title={video?.videotitle}
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -41,10 +43,9 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
         ref={videoRef}
         className="w-full h-full"
         controls
-        poster={`https://picsum.photos/854/480?random=${video?._id}`}
       >
         <source
-          src={`${process.env.BACKEND_URL}/${video?.filepath}`}
+          src={videoUrl}
           type="video/mp4"
         />
         Your browser does not support the video tag.
