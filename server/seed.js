@@ -1,12 +1,26 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import dns from "dns";
+import path from "path";
+import { fileURLToPath } from "url";
 import video from "./Modals/video.js";
 
-dotenv.config();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+dotenv.config({ path: path.join(__dirname, ".env") });
+
+const DNS_SERVERS = (process.env.DNS_SERVERS || "8.8.8.8,1.1.1.1")
+  .split(",")
+  .map((server) => server.trim())
+  .filter(Boolean);
+
+if (DNS_SERVERS.length > 0) {
+  dns.setServers(DNS_SERVERS);
+}
 
 const seedVideos = async () => {
   try {
-    await mongoose.connect(process.env.DB_URL);
+    await mongoose.connect(process.env.DB_URL, { serverSelectionTimeoutMS: 10000 });
     console.log("Connected to MongoDB");
 
     // Clear existing videos

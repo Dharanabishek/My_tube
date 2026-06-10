@@ -50,6 +50,11 @@ const videoSchema = mongoose.Schema(
     uploader: {
       type: String,
     },
+
+    seedOrder: {
+      type: Number,
+      default: 0,
+    },
   },
 
   {

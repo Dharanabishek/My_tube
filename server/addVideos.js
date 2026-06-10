@@ -1,13 +1,86 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import dns from "dns";
+import path from "path";
+import { fileURLToPath } from "url";
 import video from "./Modals/video.js";
 
-dotenv.config();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+dotenv.config({ path: path.join(__dirname, ".env") });
+
+const DNS_SERVERS = (process.env.DNS_SERVERS || "8.8.8.8,1.1.1.1")
+  .split(",")
+  .map((server) => server.trim())
+  .filter(Boolean);
+
+if (DNS_SERVERS.length > 0) {
+  dns.setServers(DNS_SERVERS);
+}
 
 // Replace this array with YOUR YouTube videos
 const YOUR_VIDEOS = [
-  
   {
+    videotitle: "Arabic Kuthu - Beast",
+    filename: "arabic-kuthu.mp4",
+    filepath: "https://www.youtube.com/embed/KUN5Uf9mObQ",
+    filetype: "video/mp4",
+    filesize: "120MB",
+    duration: 290,
+    videochannel: "Sun TV",
+    like: 5200000,
+    views: 650000000,
+    uploader: "suntv"
+},
+{
+    videotitle: "Vaathi Coming - Master",
+    filename: "vaathi-coming.mp4",
+    filepath: "https://www.youtube.com/embed/fRD_3vJagxk",
+    filetype: "video/mp4",
+    filesize: "110MB",
+    duration: 230,
+    videochannel: "Sony Music South",
+    like: 4800000,
+    views: 550000000,
+    uploader: "sonymusicsouth"
+},
+{
+    videotitle: "Enjoy Enjaami",
+    filename: "enjoy-enjaami.mp4",
+    filepath: "https://www.youtube.com/embed/eYq7WapuDLU",
+    filetype: "video/mp4",
+    filesize: "105MB",
+    duration: 280,
+    videochannel: "Maajja",
+    like: 3500000,
+    views: 500000000,
+    uploader: "maajja"
+},
+{
+    videotitle: "Rowdy Baby - Maari 2",
+    filename: "rowdy-baby.mp4",
+    filepath: "https://www.youtube.com/embed/x6Q7c9RyMzk",
+    filetype: "video/mp4",
+    filesize: "130MB",
+    duration: 260,
+    videochannel: "Wunderbar Studios",
+    like: 7200000,
+    views: 1500000000,
+    uploader: "wunderbarstudios"
+},
+{
+    videotitle: "Tum Tum - Enemy",
+    filename: "tum-tum.mp4",
+    filepath: "https://www.youtube.com/embed/tYSrY4iPX6w",
+    filetype: "video/mp4",
+    filesize: "115MB",
+    duration: 240,
+    videochannel: "Think Music India",
+    like: 3200000,
+    views: 400000000,
+    uploader: "thinkmusicindia"
+},
+{
     videotitle: "Shape of You - Ed Sheeran",
     filename: "shape-of-you.mp4",
     filepath: "https://www.youtube.com/embed/JGwWNGJdvx8",
@@ -97,20 +170,6 @@ const YOUR_VIDEOS = [
     views: 28000000,
     uploader: "comedycentral",
   },
-
-  {
-    videotitle: "Nature Relaxation 4K",
-    filename: "nature-video.mp4",
-    filepath: "https://www.youtube.com/embed/6LTYq-qMags",
-    filetype: "video/mp4",
-    filesize: "210MB",
-    duration: 3600,
-    videochannel: "Nature Relaxation",
-    like: 450000,
-    views: 18000000,
-    uploader: "naturerelaxation",
-  },
-
   {
     videotitle: "Cristiano Ronaldo Skills & Goals",
     filename: "ronaldo-skills.mp4",
@@ -141,12 +200,46 @@ const YOUR_VIDEOS = [
 
 const addVideos = async () => {
   try {
-    await mongoose.connect(process.env.DB_URL);
+    const DBURL = process.env.DB_URL;
+
+    if (!DBURL) {
+      throw new Error("DB_URL is missing. Add it to My_tube/server/.env");
+    }
+
+    if (DBURL.includes("<db_password>") || DBURL.includes("YOUR_PASSWORD")) {
+      throw new Error("Replace the password placeholder in My_tube/server/.env before running addVideos.js");
+    }
+
+    await mongoose.connect(DBURL, { serverSelectionTimeoutMS: 10000 });
     console.log("✅ Connected to MongoDB");
 
-    // Option 1: Add videos without clearing existing ones
-    await video.insertMany(YOUR_VIDEOS);
-    console.log(`✅ Successfully added ${YOUR_VIDEOS.length} videos to database`);
+    const seedVideos = YOUR_VIDEOS.map((item, index) => ({
+      ...item,
+      seedOrder: index + 1,
+    }));
+    const seedFilepaths = seedVideos.map((item) => item.filepath);
+
+    // Add or update seed videos without deleting user uploads.
+    await video.bulkWrite(
+      seedVideos.map((item) => ({
+        updateOne: {
+          filter: { filepath: item.filepath },
+          update: { $set: item },
+          upsert: true,
+        },
+      }))
+    );
+
+    const staleVideos = await video.deleteMany({
+      filepath: { $nin: seedFilepaths },
+      $or: [
+        { filepath: /^https:\/\/(?:www\.)?youtube\.com\/embed\// },
+        { filepath: /^https:\/\/youtu\.be\// },
+      ],
+    });
+
+    console.log(`✅ Successfully synced ${YOUR_VIDEOS.length} videos to database`);
+    console.log(`✅ Removed ${staleVideos.deletedCount} stale seeded videos`);
 
     const count = await video.countDocuments();
     console.log(`📊 Total videos in database: ${count}`);

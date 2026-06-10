@@ -27,7 +27,7 @@ export const uploadvideo = async (req, res) => {
 };
 export const getallvideo = async (req, res) => {
   try {
-    const files = await video.find();
+    const files = await video.find().sort({ seedOrder: 1, createdAt: -1 });
     return res.status(200).send(files);
   } catch (error) {
     console.error(" error:", error);
