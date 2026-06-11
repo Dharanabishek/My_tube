@@ -14,57 +14,83 @@ import { Button } from "./ui/button";
 import axiosInstance from "@/lib/axiosinstance";
 import { useUser } from "@/lib/AuthContext";
 
-const Channeldialogue = ({ isopen, onclose, channeldata, mode }: any) => {
+type Props = {
+  isopen: boolean;
+  onclose: () => void;
+  channeldata?: any;
+  mode: "create" | "edit";
+};
+
+const Channeldialogue = ({ isopen, onclose, channeldata, mode }: Props) => {
   const { user, login } = useUser();
-  // const user: any = {
-  //   id: "1",
-  //   name: "John Doe",
-  //   email: "john@example.com",
-  //   image: "https://github.com/shadcn.png?height=32&width=32",
-  // };
   const router = useRouter();
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
   });
-  const [isSubmitting, setisSubmitting] = useState(false);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Sync form when dialog opens or mode changes
   useEffect(() => {
-    if (channeldata && mode === "edit") {
+    if (mode === "edit" && channeldata) {
       setFormData({
         name: channeldata.name || "",
         description: channeldata.description || "",
       });
-    } else {
+    }
+
+    if (mode === "create") {
       setFormData({
         name: user?.name || "",
         description: "",
       });
     }
-  }, [channeldata]);
+  }, [channeldata, mode, user, isopen]);
+
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
-  const handlesubmit = async (e: FormEvent) => {
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const payload = {
-      channelname: formData.name,
-      description: formData.description,
-    };
-    const response = await axiosInstance.patch(
-      `/user/update/${user._id}`,
-      payload
-    );
-    login(response?.data);
-    router.push(`/channel/${user?._id}`);
-    setFormData({
-      name: "",
-      description: "",
-    });
-    onclose();
+
+    if (!user?._id) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const payload = {
+        channelname: formData.name,
+        description: formData.description,
+      };
+
+      const response = await axiosInstance.patch(
+        `/user/update/${user._id}`,
+        payload
+      );
+
+      login(response?.data);
+
+      router.push(`/channel/${user._id}`);
+
+      onclose();
+
+      setFormData({ name: "", description: "" });
+    } catch (error) {
+      console.error("Channel update failed:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
   return (
     <Dialog open={isopen} onOpenChange={onclose}>
       <DialogContent className="sm:max-w-md md:max-w-lg">
@@ -74,7 +100,7 @@ const Channeldialogue = ({ isopen, onclose, channeldata, mode }: any) => {
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handlesubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Channel Name */}
           <div className="space-y-2">
             <Label htmlFor="name">Channel Name</Label>
@@ -85,6 +111,7 @@ const Channeldialogue = ({ isopen, onclose, channeldata, mode }: any) => {
               onChange={handleChange}
             />
           </div>
+
           {/* Channel Description */}
           <div className="space-y-2">
             <Label htmlFor="description">Channel Description</Label>
@@ -102,6 +129,7 @@ const Channeldialogue = ({ isopen, onclose, channeldata, mode }: any) => {
             <Button type="button" variant="outline" onClick={onclose}>
               Cancel
             </Button>
+
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting
                 ? "Saving..."

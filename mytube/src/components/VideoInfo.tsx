@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Button } from "./ui/button";
 import {
+  Check,
   Clock,
   Download,
   MoreHorizontal,
@@ -14,6 +15,34 @@ import { useUser } from "@/lib/AuthContext";
 import axiosInstance from "@/lib/axiosinstance";
 import { formatViews } from "@/lib/video-meta";
 
+const DEFAULT_SUBSCRIBER_COUNT = 1200000;
+
+const isObjectId = (value?: string) => /^[0-9a-fA-F]{24}$/.test(value || "");
+
+const getChannelId = (video: any) =>
+  String(video?.channelId || video?.uploader || video?.videochannel || "");
+
+const getInitialSubscriberCount = (video: any) =>
+  Number(
+    video?.subscribersCount ??
+      video?.subscriberCount ??
+      video?.subscribers ??
+      DEFAULT_SUBSCRIBER_COUNT
+  ) || 0;
+
+const formatSubscriberCount = (count: number) => {
+  const safeCount = Math.max(Number(count) || 0, 0);
+  let label = safeCount.toLocaleString();
+
+  if (safeCount >= 1000000) {
+    label = `${Number((safeCount / 1000000).toFixed(1))}M`;
+  } else if (safeCount >= 1000) {
+    label = `${Number((safeCount / 1000).toFixed(1))}K`;
+  }
+
+  return `${label} ${safeCount === 1 ? "subscriber" : "subscribers"}`;
+};
+
 const VideoInfo = ({ video }: any) => {
   const [likes, setlikes] = useState(video.like ?? video.Like ?? 0);
   const [dislikes, setDislikes] = useState(video.Dislike || 0);
@@ -23,6 +52,22 @@ const VideoInfo = ({ video }: any) => {
   const { user } = useUser();
   const [isWatchLater, setIsWatchLater] = useState(false);
   const [downloadMessage, setDownloadMessage] = useState("");
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [subscriberCount, setSubscriberCount] = useState(
+    getInitialSubscriberCount(video)
+  );
+  const [isSubscriptionSaving, setIsSubscriptionSaving] = useState(false);
+
+  const channelId = getChannelId(video);
+  const canPersistSubscriptionToDb =
+    Boolean(user?._id) && isObjectId(channelId) && user?._id !== channelId;
+  const subscriptionStorageKey = `subscription:${user?._id || "guest"}:${channelId}`;
+  const subscriberCountStorageKey = `subscriber-count:${channelId}`;
+  const descriptionText =
+    video.description ||
+    video.videoDescription ||
+    video.videodescription ||
+    "No description provided.";
 
   // const user: any = {
   //   id: "1",
@@ -35,7 +80,66 @@ const VideoInfo = ({ video }: any) => {
     setDislikes(video.Dislike || 0);
     setIsLiked(false);
     setIsDisliked(false);
+    setSubscriberCount(getInitialSubscriberCount(video));
   }, [video]);
+
+  useEffect(() => {
+    if (!channelId) return;
+
+    const loadSubscription = async () => {
+      const storedSubscribed =
+        typeof window !== "undefined"
+          ? localStorage.getItem(subscriptionStorageKey)
+          : null;
+      const storedCount =
+        typeof window !== "undefined"
+          ? localStorage.getItem(subscriberCountStorageKey)
+          : null;
+
+      if (storedSubscribed !== null) {
+        setIsSubscribed(storedSubscribed === "true");
+      } else {
+        setIsSubscribed(false);
+      }
+
+      if (storedCount !== null) {
+        setSubscriberCount(Number(storedCount) || 0);
+      } else {
+        setSubscriberCount(getInitialSubscriberCount(video));
+      }
+
+      if (!canPersistSubscriptionToDb) return;
+
+      try {
+        const res = await axiosInstance.get(
+          `/channel/status/${channelId}/${user?._id}`
+        );
+        setIsSubscribed(Boolean(res.data.subscribed));
+        setSubscriberCount(Number(res.data.subscribersCount) || 0);
+        if (typeof window !== "undefined") {
+          localStorage.setItem(
+            subscriptionStorageKey,
+            String(Boolean(res.data.subscribed))
+          );
+          localStorage.setItem(
+            subscriberCountStorageKey,
+            String(Number(res.data.subscribersCount) || 0)
+          );
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    loadSubscription();
+  }, [
+    canPersistSubscriptionToDb,
+    channelId,
+    subscriberCountStorageKey,
+    subscriptionStorageKey,
+    user?._id,
+    video,
+  ]);
 
   useEffect(() => {
     const loadLikedStatus = async () => {
@@ -110,6 +214,50 @@ const VideoInfo = ({ video }: any) => {
       console.log(error);
     }
   };
+  const handleSubscribe = async () => {
+    if (!channelId || isSubscriptionSaving) return;
+
+    const nextSubscribed = !isSubscribed;
+    const nextCount = Math.max(
+      subscriberCount + (nextSubscribed ? 1 : -1),
+      0
+    );
+
+    setIsSubscribed(nextSubscribed);
+    setSubscriberCount(nextCount);
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem(subscriptionStorageKey, String(nextSubscribed));
+      localStorage.setItem(subscriberCountStorageKey, String(nextCount));
+    }
+
+    if (!canPersistSubscriptionToDb) return;
+
+    try {
+      setIsSubscriptionSaving(true);
+      const res = await axiosInstance.post("/channel/toggle", {
+        userId: user?._id,
+        channelId,
+      });
+
+      setIsSubscribed(Boolean(res.data.subscribed));
+      setSubscriberCount(Number(res.data.subscribersCount) || 0);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(
+          subscriptionStorageKey,
+          String(Boolean(res.data.subscribed))
+        );
+        localStorage.setItem(
+          subscriberCountStorageKey,
+          String(Number(res.data.subscribersCount) || 0)
+        );
+      }
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setIsSubscriptionSaving(false);
+    }
+  };
   const handleDislike = async () => {
     if (!user) return;
     try {
@@ -167,42 +315,57 @@ const VideoInfo = ({ video }: any) => {
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">{video.videotitle}</h1>
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <Avatar className="w-10 h-10">
             <AvatarFallback>{video.videochannel?.[0]?.toUpperCase() || "V"}</AvatarFallback>
           </Avatar>
           <div>
             <h3 className="font-medium">{video.videochannel || "Unknown Channel"}</h3>
-            <p className="text-sm text-gray-600">1.2M subscribers</p>
+            <p className="text-sm text-muted-foreground">
+              {formatSubscriberCount(subscriberCount)}
+            </p>
           </div>
-          <Button className="ml-4">Subscribe</Button>
+          <Button
+            type="button"
+            aria-pressed={isSubscribed}
+            onClick={handleSubscribe}
+            disabled={isSubscriptionSaving}
+            className={`ml-0 rounded-full px-5 font-semibold transition-all active:scale-95 ${
+              isSubscribed
+                ? "bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground"
+                : "bg-primary text-primary-foreground hover:bg-primary/90"
+            }`}
+          >
+            {isSubscribed && <Check className="w-4 h-4" />}
+            {isSubscribed ? "Subscribed" : "Subscribe"}
+          </Button>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center bg-gray-100 rounded-full">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center overflow-hidden rounded-full bg-secondary text-secondary-foreground">
             <Button
               variant="ghost"
               size="sm"
-              className="rounded-l-full"
+              className="rounded-l-full hover:bg-accent hover:text-accent-foreground active:scale-95"
               onClick={handleLike}
             >
               <ThumbsUp
                 className={`w-5 h-5 mr-2 ${
-                  isLiked ? "fill-black text-black" : ""
+                  isLiked ? "fill-current text-foreground" : ""
                 }`}
               />
               {likes.toLocaleString()}
             </Button>
-            <div className="w-px h-6 bg-gray-300" />
+            <div className="w-px h-6 bg-border" />
             <Button
               variant="ghost"
               size="sm"
-              className="rounded-r-full"
+              className="rounded-r-full hover:bg-accent hover:text-accent-foreground active:scale-95"
               onClick={handleDislike}
             >
               <ThumbsDown
                 className={`w-5 h-5 mr-2 ${
-                  isDisliked ? "fill-black text-black" : ""
+                  isDisliked ? "fill-current text-foreground" : ""
                 }`}
               />
               {dislikes.toLocaleString()}
@@ -211,7 +374,7 @@ const VideoInfo = ({ video }: any) => {
           <Button
             variant="ghost"
             size="sm"
-            className={`bg-gray-100 rounded-full ${
+            className={`rounded-full bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground active:scale-95 ${
               isWatchLater ? "text-primary" : ""
             }`}
             onClick={handleWatchLater}
@@ -222,7 +385,7 @@ const VideoInfo = ({ video }: any) => {
           <Button
             variant="ghost"
             size="sm"
-            className="bg-gray-100 rounded-full"
+            className="rounded-full bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground active:scale-95"
           >
             <Share className="w-5 h-5 mr-2" />
             Share
@@ -230,7 +393,7 @@ const VideoInfo = ({ video }: any) => {
           <Button
             variant="ghost"
             size="sm"
-            className="bg-gray-100 rounded-full"
+            className="rounded-full bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground active:scale-95"
             onClick={handleDownload}
           >
             <Download className="w-5 h-5 mr-2" />
@@ -239,7 +402,7 @@ const VideoInfo = ({ video }: any) => {
           <Button
             variant="ghost"
             size="icon"
-            className="bg-gray-100 rounded-full"
+            className="rounded-full bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground active:scale-95"
           >
             <MoreHorizontal className="w-5 h-5" />
           </Button>
@@ -250,21 +413,22 @@ const VideoInfo = ({ video }: any) => {
           </div>
         )}
       </div>
-      <div className="bg-gray-100 rounded-lg p-4">
-        <div className="flex gap-4 text-sm font-medium mb-2">
+      <div className="group rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm transition-colors hover:bg-accent/40 sm:p-5">
+        <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-sm font-semibold">
           <span>{formatViews(video.views)}</span>
           <span>{formatDistanceToNow(new Date(video.createdAt))} ago</span>
         </div>
-        <div className={`text-sm ${showFullDescription ? "" : "line-clamp-3"}`}>
-          <p>
-            Sample video description. This would contain the actual video
-            description from the database.
-          </p>
+        <div
+          className={`whitespace-pre-line text-sm leading-6 text-card-foreground ${
+            showFullDescription ? "" : "line-clamp-3"
+          }`}
+        >
+          <p>{descriptionText}</p>
         </div>
         <Button
           variant="ghost"
           size="sm"
-          className="mt-2 p-0 h-auto font-medium"
+          className="mt-3 h-auto rounded-full px-0 py-0 font-semibold text-card-foreground hover:bg-transparent hover:text-muted-foreground"
           onClick={() => setShowFullDescription(!showFullDescription)}
         >
           {showFullDescription ? "Show less" : "Show more"}

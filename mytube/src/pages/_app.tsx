@@ -10,7 +10,7 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <UserProvider>
       <Head>
-        <title>Your-Tube Clone</title>
+        <title>My Tube Clone</title>
       </Head>
       <div className="min-h-screen bg-background text-foreground">
         <Header />

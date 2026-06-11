@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Subscription from "@/components/Subscription";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import axiosInstance from "@/lib/axiosinstance";
@@ -39,7 +39,7 @@ export default function SettingsPage() {
         <Button onClick={saveProfile}>Save</Button>
         {message && <div className="text-sm text-green-600">{message}</div>}
       </section>
-      <Subscription />
+      
     </main>
   );
 }

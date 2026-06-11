@@ -33,7 +33,7 @@ export default function VideoCard({ video }: any) {
               {video?.videotitle}
             </h3>
             <p className="text-sm text-gray-600 mt-1">
-              {video?.videochannel || "Unknown Channel"}
+              {video?.videochannel || "known Channel"}
             </p>
             <p className="text-sm text-gray-600">
               {formatViews(video?.views)} &bull;{" "}
