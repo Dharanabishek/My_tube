@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axiosInstance from "@/lib/axiosinstance";
 import { useUser } from "@/lib/AuthContext";
 
@@ -27,6 +27,25 @@ export default function Subscription() {
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [activePlan, setActivePlan] = useState("Free");
+
+  const loadSubscription = async () => {
+    if (!user?._id) {
+      setActivePlan("Free");
+      return;
+    }
+
+    try {
+      const resp = await axiosInstance.get(`/payment/subscription/${user._id}`);
+      setActivePlan(resp.data?.planType || "Free");
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    loadSubscription();
+  }, [user?._id]);
 
   const handleSubscribe = async (planKey: string) => {
     setMessage(null);
@@ -67,6 +86,7 @@ export default function Subscription() {
               userId: user._id,
               planType: planKey,
             });
+            setActivePlan(planKey);
             setMessage("Payment successful. Subscription activated and invoice sent.");
           } catch (err: any) {
             console.error(err);
@@ -94,6 +114,7 @@ export default function Subscription() {
             planType: planKey,
             userId: user._id,
           });
+          setActivePlan(planKey);
           setMessage("Mock subscription activated in dev mode.");
         } catch (merr: any) {
           console.error(merr);
@@ -118,6 +139,7 @@ export default function Subscription() {
         planType: planKey,
         userId: user._id,
       });
+      setActivePlan(planKey);
       setMessage("Mock subscription activated in dev mode.");
     } catch (merr: any) {
       console.error(merr);
@@ -130,10 +152,25 @@ export default function Subscription() {
   return (
     <div className="p-4">
       <h3 className="text-lg font-semibold mb-3">Plans and premium access</h3>
+      <div className="mb-4 rounded border bg-card p-3 text-sm">
+        Current plan: <span className="font-semibold">{activePlan}</span>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {plans.map((p) => (
-          <div key={p.key} className="p-4 border rounded">
-            <div className="text-xl font-bold">{p.key}</div>
+          <div
+            key={p.key}
+            className={`p-4 border rounded ${
+              activePlan === p.key ? "border-primary bg-primary/5" : ""
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xl font-bold">{p.key}</div>
+              {activePlan === p.key && (
+                <span className="rounded-full bg-primary px-2 py-1 text-xs text-primary-foreground">
+                  Active
+                </span>
+              )}
+            </div>
             <div className="text-2xl mt-2">INR {p.price}</div>
             <div className="text-sm mt-2">{p.desc}</div>
             {p.key === "Free" ? (
@@ -143,15 +180,19 @@ export default function Subscription() {
                 <button
                   className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded"
                   onClick={() => handleSubscribe(p.key)}
-                  disabled={loading}
+                  disabled={loading || activePlan === p.key}
                 >
-                  {loading ? "Processing..." : `Buy ${p.key}`}
+                  {activePlan === p.key
+                    ? "Current plan"
+                    : loading
+                    ? "Processing..."
+                    : `Buy ${p.key}`}
                 </button>
                 {process.env.NODE_ENV !== "production" && (
                   <button
                     className="mt-2 ml-2 px-3 py-1 bg-gray-200 text-black rounded text-sm"
                     onClick={() => handleMockSubscribe(p.key)}
-                    disabled={loading}
+                    disabled={loading || activePlan === p.key}
                   >
                     Mock Subscribe
                   </button>

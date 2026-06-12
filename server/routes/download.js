@@ -11,7 +11,7 @@ const routes = express.Router();
 
 routes.post("/create", createDownload);
 routes.get("/file/:videoId", jwtAuth, downloadVideoFile);
-routes.get("/user/:id", getUserDownloads);
+routes.get("/user/:id", jwtAuth, getUserDownloads);
 routes.get("/all", getAllDownloads);
 
 export default routes;

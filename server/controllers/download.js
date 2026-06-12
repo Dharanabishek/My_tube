@@ -28,24 +28,6 @@ export const createDownload = async (req, res) => {
     const effectivePlan = await getActivePlan(userId);
     const planDetails = getPlanDetails(effectivePlan);
 
-    // FREE USER LIMIT
-    if (planDetails.downloadLimitPerDay !== null) {
-      const downloadsToday = await Download.countDocuments({
-        userId,
-        downloadDate: {
-          $gte: startOfDay(),
-        },
-      });
-
-      if (downloadsToday >= planDetails.downloadLimitPerDay) {
-        return res.status(429).json({
-          message:
-            "Daily download limit reached. Upgrade to premium.",
-          code: "LIMIT_REACHED",
-        });
-      }
-    }
-
     // Check if same video already downloaded today
     const existing = await Download.findOne({
       userId,
@@ -67,6 +49,24 @@ export const createDownload = async (req, res) => {
       await existing.save();
 
       return res.status(200).json(existing);
+    }
+
+    // FREE USER LIMIT
+    if (planDetails.downloadLimitPerDay !== null) {
+      const downloadsToday = await Download.countDocuments({
+        userId,
+        downloadDate: {
+          $gte: startOfDay(),
+        },
+      });
+
+      if (downloadsToday >= planDetails.downloadLimitPerDay) {
+        return res.status(429).json({
+          message:
+            "Daily download limit reached. Upgrade to premium for unlimited downloads.",
+          code: "LIMIT_REACHED",
+        });
+      }
     }
 
     // Create new download
@@ -91,11 +91,18 @@ export const createDownload = async (req, res) => {
 export const getUserDownloads = async (req, res) => {
   try {
     const { id } = req.params;
+    const requesterId = req.user?.id;
 
     // Validate user ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         message: "Invalid user id",
+      });
+    }
+
+    if (requesterId && requesterId !== id) {
+      return res.status(403).json({
+        message: "You can only view your own downloads.",
       });
     }
 

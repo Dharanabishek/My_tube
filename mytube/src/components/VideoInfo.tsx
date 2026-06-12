@@ -14,6 +14,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useUser } from "@/lib/AuthContext";
 import axiosInstance from "@/lib/axiosinstance";
 import { formatViews } from "@/lib/video-meta";
+import { useRouter } from "next/router";
 
 const DEFAULT_SUBSCRIBER_COUNT = 1200000;
 
@@ -43,6 +44,21 @@ const formatSubscriberCount = (count: number) => {
   return `${label} ${safeCount === 1 ? "subscriber" : "subscribers"}`;
 };
 
+const readDownloadError = async (error: any) => {
+  const data = error?.response?.data;
+
+  if (data instanceof Blob) {
+    try {
+      const text = await data.text();
+      return JSON.parse(text);
+    } catch {
+      return {};
+    }
+  }
+
+  return data || {};
+};
+
 const VideoInfo = ({ video }: any) => {
   const [likes, setlikes] = useState(video.like ?? video.Like ?? 0);
   const [dislikes, setDislikes] = useState(video.Dislike || 0);
@@ -52,11 +68,14 @@ const VideoInfo = ({ video }: any) => {
   const { user } = useUser();
   const [isWatchLater, setIsWatchLater] = useState(false);
   const [downloadMessage, setDownloadMessage] = useState("");
+  const [downloadNeedsUpgrade, setDownloadNeedsUpgrade] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscriberCount, setSubscriberCount] = useState(
     getInitialSubscriberCount(video)
   );
   const [isSubscriptionSaving, setIsSubscriptionSaving] = useState(false);
+  const router = useRouter();
 
   const channelId = getChannelId(video);
   const canPersistSubscriptionToDb =
@@ -286,14 +305,20 @@ const VideoInfo = ({ video }: any) => {
   const handleDownload = async () => {
     if (!user) {
       setDownloadMessage("Please sign in to download videos.");
+      setDownloadNeedsUpgrade(false);
       return;
     }
 
     try {
       setDownloadMessage("");
+      setDownloadNeedsUpgrade(false);
+      setIsDownloading(true);
       const response = await axiosInstance.get(
         `/download/file/${video._id}`,
-        { responseType: "blob" }
+        {
+          params: { userId: user._id },
+          responseType: "blob",
+        }
       );
       const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
@@ -305,10 +330,17 @@ const VideoInfo = ({ video }: any) => {
       window.URL.revokeObjectURL(blobUrl);
       setDownloadMessage("Saved to browser downloads and profile downloads.");
     } catch (error: any) {
+      const payload = await readDownloadError(error);
+      const limitReached =
+        payload?.code === "LIMIT_REACHED" || error?.response?.status === 429;
+
+      setDownloadNeedsUpgrade(limitReached);
       setDownloadMessage(
-        error?.response?.data?.message ||
+        payload?.message ||
           "Download failed. Free users can download 1 video per day."
       );
+    } finally {
+      setIsDownloading(false);
     }
   };
   return (
@@ -395,9 +427,10 @@ const VideoInfo = ({ video }: any) => {
             size="sm"
             className="rounded-full bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground active:scale-95"
             onClick={handleDownload}
+            disabled={isDownloading}
           >
             <Download className="w-5 h-5 mr-2" />
-            Download
+            {isDownloading ? "Downloading..." : "Download"}
           </Button>
           <Button
             variant="ghost"
@@ -408,8 +441,17 @@ const VideoInfo = ({ video }: any) => {
           </Button>
         </div>
         {downloadMessage && (
-          <div className="mt-2 text-sm text-muted-foreground">
-            {downloadMessage}
+          <div className="mt-2 flex w-full flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span>{downloadMessage}</span>
+            {downloadNeedsUpgrade && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => router.push("/profile/subscribe")}
+              >
+                Upgrade to premium
+              </Button>
+            )}
           </div>
         )}
       </div>
