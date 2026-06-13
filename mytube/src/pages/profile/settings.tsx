@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,14 @@ export default function SettingsPage() {
   const [city, setCity] = useState(user?.city || "");
   const [state, setState] = useState(user?.state || "");
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      setMobile(user.mobile || "");
+      setCity(user.city || "");
+      setState(user.state || "");
+    }
+  }, [user]);
 
   const saveProfile = async () => {
     if (!user) return;

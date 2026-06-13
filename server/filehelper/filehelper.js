@@ -1,7 +1,7 @@
 "use strict";
 import multer from "multer";
 const storage = multer.diskStorage({
-  destination: (req, res, cb) => {
+  destination: (req, file, cb) => {
     cb(null, "uploads");
   },
   filename: (req, file, cb) => {

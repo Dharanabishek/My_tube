@@ -1,8 +1,9 @@
 import express from "express";
-import { getAccessTheme, login, refreshTheme, requestOtp, updateprofile, verifyOtp } from "../controllers/auth.js";
+import { getAccessTheme, login, refreshTheme, requestOtp, updateprofile, verifyOtp, getprofile } from "../controllers/auth.js";
 import jwtAuth from "../middleware/jwtAuth.js";
 const routes = express.Router();
 
+routes.get("/profile/:id", getprofile);
 routes.post("/access-theme", getAccessTheme);
 routes.post("/login", login);
 routes.post("/request-otp", requestOtp);
