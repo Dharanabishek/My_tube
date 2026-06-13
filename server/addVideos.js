@@ -167,18 +167,7 @@ const YOUR_VIDEOS = [
     uploader: "natureworld",
   },
 
-  {
-    videotitle: "Wildlife Cinematic",
-    filename: "nature3.mp4",
-    filepath: "uploads/nature3.mp4",
-    filetype: "video/mp4",
-    filesize: "139MB",
-    duration: 55,
-    videochannel: "Wild Earth",
-    like: 350000,
-    views: 14500000,
-    uploader: "wildearth",
-  },
+
 ];
 
 
