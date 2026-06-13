@@ -156,18 +156,7 @@ const YOUR_VIDEOS = [
     views: 10000000,
     uploader: "natureworld",
   },
-  {
-    videotitle: "Natural Views",
-    filename: "nature3.mp4",
-    filepath: "uploads/nature3.mp4",
-    filetype: "video/mp4",
-    filesize: "4.55MB",   
-    duration: 5700,
-    videochannel: "Nature World",
-    like: 280000,
-    views: 10000000,
-    uploader: "natureworld",
-  },
+
 ];
 
 const addVideos = async () => {
