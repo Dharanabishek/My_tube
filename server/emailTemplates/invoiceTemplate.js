@@ -1,6 +1,7 @@
 export function generateInvoiceHTML({ invoiceId, planName, amount, date, user, paymentId }) {
   const customerName = user?.name || user?.channelname || user?.email || "Customer";
   const userEmail = user?.email || "";
+
   return `
   <!doctype html>
   <html>
@@ -25,7 +26,7 @@ export function generateInvoiceHTML({ invoiceId, planName, amount, date, user, p
     <body>
       <div class="container">
         <div class="header">
-          <h1>YourTube — Invoice</h1>
+          <h1>YourTube - Invoice</h1>
         </div>
         <div class="content">
           <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -62,17 +63,17 @@ export function generateInvoiceHTML({ invoiceId, planName, amount, date, user, p
             <tbody>
               <tr>
                 <td>${planName} subscription</td>
-                <td>₹${amount}</td>
+                <td>INR ${amount}</td>
               </tr>
             </tbody>
           </table>
 
-          <div class="total">Total: ₹${amount}</div>
+          <div class="total">Total: INR ${amount}</div>
         </div>
         <div class="footer">
           <div style="margin-bottom:8px"><span class="badge">Payment Received</span></div>
           <div>If you have any questions about this invoice, reply to this email or contact support.</div>
-          <div style="margin-top:8px;color:#94a3b8">YourTube Pvt Ltd — Registered Office</div>
+          <div style="margin-top:8px;color:#94a3b8">YourTube Pvt Ltd - Registered Office</div>
         </div>
       </div>
     </body>

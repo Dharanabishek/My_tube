@@ -42,6 +42,22 @@ const planPrices = Object.fromEntries(
   PAID_PLANS.map((planType) => [planType, PLAN_LIMITS[planType].price])
 );
 
+function getAuthorizedUserId(req, res, requestedUserId) {
+  const userId = requestedUserId || req.user?.id;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    res.status(400).json({ message: "Invalid user id" });
+    return null;
+  }
+
+  if (req.user?.id !== userId) {
+    res.status(403).json({ message: "You can only access your own subscription data." });
+    return null;
+  }
+
+  return userId;
+}
+
 export const createOrder = async (req, res) => {
   try {
     const { client, keyId, missing } = getRazorpayClient();
@@ -52,12 +68,16 @@ export const createOrder = async (req, res) => {
     }
 
     const { planType, userId } = req.body;
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: "Invalid user id" });
-    }
+    const authorizedUserId = getAuthorizedUserId(req, res, userId);
+    if (!authorizedUserId) return;
+
     if (!planType || !PAID_PLANS.includes(planType)) {
       return res.status(400).json({ message: "Invalid planType" });
     }
+
+    const user = await users.findById(authorizedUserId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
     const amount = (planPrices[planType] || 0) * 100; // paise
     const options = {
       amount,
@@ -66,7 +86,7 @@ export const createOrder = async (req, res) => {
     };
     const order = await client.orders.create(options);
     // Create payment record
-    const payment = await Payment.create({ userId, planType, amount: amount / 100, orderId: order.id, currency: "INR", status: "created" });
+    const payment = await Payment.create({ userId: authorizedUserId, planType, amount: amount / 100, orderId: order.id, currency: "INR", status: "created" });
     return res.status(201).json({ order, payment, keyId });
   } catch (error) {
     console.error("createOrder error:", error);
@@ -83,12 +103,30 @@ export const verifyPayment = async (req, res) => {
         message: `Payment provider not configured. Missing ${missing.join(" and ")} in server/.env`,
       });
     }
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: "Invalid user id" });
-    }
+    const authorizedUserId = getAuthorizedUserId(req, res, userId);
+    if (!authorizedUserId) return;
+
     if (!planType || !PAID_PLANS.includes(planType)) {
       return res.status(400).json({ message: "Invalid planType" });
     }
+
+    const existingPayment = await Payment.findOne({ orderId: razorpay_order_id });
+    if (!existingPayment) {
+      return res.status(404).json({ message: "Payment order not found" });
+    }
+
+    if (String(existingPayment.userId) !== authorizedUserId) {
+      return res.status(403).json({ message: "Payment order does not belong to this user" });
+    }
+
+    if (existingPayment.planType !== planType) {
+      return res.status(400).json({ message: "Plan does not match the payment order" });
+    }
+
+    if (existingPayment.status === "paid") {
+      return res.status(200).json({ message: "Payment already verified", payment: existingPayment });
+    }
+
     const generated_signature = crypto.createHmac("sha256", keySecret).update(razorpay_order_id + "|" + razorpay_payment_id).digest("hex");
     if (generated_signature !== razorpay_signature) {
       return res.status(400).json({ message: "Invalid signature" });
@@ -98,19 +136,19 @@ export const verifyPayment = async (req, res) => {
     const payment = await Payment.findOneAndUpdate({ orderId: razorpay_order_id }, { paymentId: razorpay_payment_id, signature: razorpay_signature, status: "paid", invoiceId: `INV-${Date.now()}` }, { new: true });
 
     // create/extend subscription
-    const price = planPrices[planType] || 0;
+    const price = existingPayment.amount;
     const startDate = new Date();
     const endDate = new Date();
     endDate.setMonth(endDate.getMonth() + 1);
-    await Subscription.create({ userId, planType, startDate, endDate, paymentId: razorpay_payment_id, status: "active" });
+    await Subscription.create({ userId: authorizedUserId, planType: existingPayment.planType, startDate, endDate, paymentId: razorpay_payment_id, status: "active" });
 
     // send invoice email
     try {
-      const user = await users.findById(userId);
+      const user = await users.findById(authorizedUserId);
       if (user && user.email) {
         const html = generateInvoiceHTML({
           invoiceId: payment?.invoiceId,
-          planName: planType,
+          planName: existingPayment.planType,
           amount: price,
           date: new Date().toLocaleString(),
           user,
@@ -118,7 +156,7 @@ export const verifyPayment = async (req, res) => {
         });
         await sendEmail({
           to: user.email,
-          subject: `Invoice ${payment?.invoiceId} - ${planType}`,
+          subject: `Invoice ${payment?.invoiceId} - ${existingPayment.planType}`,
           html,
         });
       }
@@ -136,7 +174,10 @@ export const verifyPayment = async (req, res) => {
 export const getPaymentsForUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const list = await Payment.find({ userId: id }).sort({ createdAt: -1 });
+    const userId = getAuthorizedUserId(req, res, id);
+    if (!userId) return;
+
+    const list = await Payment.find({ userId }).sort({ createdAt: -1 });
     return res.status(200).json(list);
   } catch (error) {
     console.error(error);
@@ -152,25 +193,28 @@ export const mockSubscribe = async (req, res) => {
       return res.status(400).json({ message: "Mock subscriptions are disabled" });
     }
     const { planType, userId } = req.body;
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: "Invalid user id" });
-    }
+    const authorizedUserId = getAuthorizedUserId(req, res, userId);
+    if (!authorizedUserId) return;
+
     if (!planType || !PAID_PLANS.includes(planType)) {
       return res.status(400).json({ message: "Invalid planType" });
     }
+
+    const user = await users.findById(authorizedUserId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
     const price = planPrices[planType] || 0;
     const paymentId = `mock_${Date.now()}`;
     const invoiceId = `INV-${Date.now()}`;
-    const payment = await Payment.create({ userId, planType, amount: price, orderId: paymentId, paymentId, currency: "INR", status: "paid", invoiceId });
+    const payment = await Payment.create({ userId: authorizedUserId, planType, amount: price, orderId: paymentId, paymentId, currency: "INR", status: "paid", invoiceId });
 
     const startDate = new Date();
     const endDate = new Date();
     endDate.setMonth(endDate.getMonth() + 1);
-    await Subscription.create({ userId, planType, startDate, endDate, paymentId, status: "active" });
+    await Subscription.create({ userId: authorizedUserId, planType, startDate, endDate, paymentId, status: "active" });
 
     // send invoice email if possible
     try {
-      const user = await users.findById(userId);
       if (user && user.email) {
         const html = generateInvoiceHTML({
           invoiceId,
@@ -200,9 +244,12 @@ export const mockSubscribe = async (req, res) => {
 export const getSubscriptionForUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const planType = await getActivePlan(id);
+    const userId = getAuthorizedUserId(req, res, id);
+    if (!userId) return;
+
+    const planType = await getActivePlan(userId);
     const subscription = await Subscription.findOne({
-      userId: id,
+      userId,
       status: "active",
       $or: [{ endDate: { $exists: false } }, { endDate: null }, { endDate: { $gt: new Date() } }],
     })

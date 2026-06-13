@@ -16,15 +16,20 @@ const SOUTH_INDIAN_STATES = new Set([
 const JWT_SECRET = process.env.JWT_SECRET || "dev_jwt_secret";
 const OTP_TTL_MINUTES = Number(process.env.OTP_TTL_MINUTES || 10);
 
-function normalizeState(state = "") {
-  return state.trim().toLowerCase();
+export function normalizeState(state = "") {
+  return state
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
 }
 
-function isSouthIndianState(state = "") {
-  return SOUTH_INDIAN_STATES.has(normalizeState(state));
+export function isSouthIndianState(state = "") {
+  const normalizedState = normalizeState(state);
+  return SOUTH_INDIAN_STATES.has(normalizedState);
 }
 
-function isLightThemeWindow(date = new Date()) {
+export function isLightThemeWindow(date = new Date()) {
   const istDate = new Date(
     date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
   );
@@ -32,7 +37,7 @@ function isLightThemeWindow(date = new Date()) {
   return hour >= 10 && hour < 12;
 }
 
-function getThemeForLogin(state, date = new Date()) {
+export function getThemeForLogin(state, date = new Date()) {
   return isSouthIndianState(state) && isLightThemeWindow(date) ? "light" : "dark";
 }
 
@@ -237,6 +242,50 @@ export const verifyOtp = async (req, res) => {
   } catch (error) {
     console.error("verifyOtp error:", error);
     return res.status(500).json({ message: "OTP verification failed" });
+  }
+};
+
+export const getAccessTheme = async (req, res) => {
+  const { state } = req.body;
+  const theme = getThemeForLogin(state);
+
+  return res.status(200).json({
+    theme,
+    state,
+    isSouthIndia: isSouthIndianState(state),
+    isLightThemeWindow: isLightThemeWindow(),
+  });
+};
+
+export const refreshTheme = async (req, res) => {
+  const userId = req.user?.id;
+  const { city, state } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: "Invalid user id" });
+  }
+
+  try {
+    const user = await users.findById(userId);
+    if (!user) return res.status(404).json({ message: "User unavailable" });
+
+    if (city) user.city = city;
+    if (state) user.state = state;
+
+    const theme = getThemeForLogin(user.state);
+    user.lastLoginTheme = theme;
+    await user.save();
+
+    return res.status(200).json({
+      theme,
+      state: user.state,
+      city: user.city,
+      isSouthIndia: isSouthIndianState(user.state),
+      isLightThemeWindow: isLightThemeWindow(),
+    });
+  } catch (error) {
+    console.error("refreshTheme error:", error);
+    return res.status(500).json({ message: "Could not refresh theme" });
   }
 };
 

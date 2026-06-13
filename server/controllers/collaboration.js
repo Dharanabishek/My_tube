@@ -7,7 +7,8 @@ function isValidRoomId(roomId = "") {
 
 export const postSignal = async (req, res) => {
   const { roomId } = req.params;
-  const { senderId, type, payload } = req.body;
+  const { type, payload } = req.body;
+  const senderId = req.user?.id;
 
   if (!isValidRoomId(roomId)) {
     return res.status(400).json({ message: "Invalid room id" });
@@ -39,7 +40,8 @@ export const postSignal = async (req, res) => {
 
 export const getSignals = async (req, res) => {
   const { roomId } = req.params;
-  const { userId, since } = req.query;
+  const { since } = req.query;
+  const userId = req.user?.id;
 
   if (!isValidRoomId(roomId)) {
     return res.status(400).json({ message: "Invalid room id" });

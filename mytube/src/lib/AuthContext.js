@@ -87,6 +87,26 @@ export const UserProvider = ({ children }) => {
     login(response.data.result, response.data.token, response.data.theme);
   };
 
+  const refreshAccessTheme = async (fallbackUser) => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const locationPayload = await getLocationPayload();
+      const authToken = localStorage.getItem("authToken");
+      const endpoint = authToken ? "/user/refresh-theme" : "/user/access-theme";
+      const response = await axiosInstance.post(endpoint, {
+        city: locationPayload.city || fallbackUser?.city,
+        state: locationPayload.state || fallbackUser?.state,
+      });
+
+      if (response.data.theme) {
+        applyTheme(response.data.theme);
+      }
+    } catch (error) {
+      console.error("Could not refresh access theme:", error);
+    }
+  };
+
   const handlegooglesignin = async () => {
     try {
       const result = await signInWithPopup(auth, provider);
@@ -124,7 +144,9 @@ export const UserProvider = ({ children }) => {
 
     if (storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        void refreshAccessTheme(parsedUser);
       } catch (error) {
         localStorage.removeItem("user");
       }
@@ -132,6 +154,10 @@ export const UserProvider = ({ children }) => {
 
     if (storedToken) setToken(storedToken);
     applyTheme(storedTheme);
+
+    if (!storedUser) {
+      void refreshAccessTheme(null);
+    }
 
     const unsubcribe = onAuthStateChanged(auth, async (firebaseuser) => {
       if (firebaseuser && !hasStoredUser) {

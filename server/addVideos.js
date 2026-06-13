@@ -1,9 +1,11 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import dns from "dns";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import video from "./Modals/video.js";
+
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -18,182 +20,164 @@ if (DNS_SERVERS.length > 0) {
   dns.setServers(DNS_SERVERS);
 }
 
-// Replace this array with YOUR YouTube videos
+const resolveUploadPath = (filepath) =>
+  path.resolve(__dirname, filepath.replace(/^\/?uploads[\\/]/, "uploads/"));
+
 const YOUR_VIDEOS = [
   {
-    videotitle: "Arabic Kuthu - Beast",
-    filename: "arabic-kuthu.mp4",
-    filepath: "https://www.youtube.com/embed/KUN5Uf9mObQ",
+    videotitle: "Aal Thotta Boopathy",
+    filename: "Aal Thotta Boopathy.mp4",
+    filepath: "uploads/Aal Thotta Boopathy.mp4",
     filetype: "video/mp4",
-    filesize: "120MB",
-    duration: 290,
-    videochannel: "Sun TV",
-    like: 5200000,
-    views: 650000000,
-    uploader: "suntv"
-},
-{
-    videotitle: "Vaathi Coming - Master",
-    filename: "vaathi-coming.mp4",
-    filepath: "https://www.youtube.com/embed/fRD_3vJagxk",
-    filetype: "video/mp4",
-    filesize: "110MB",
-    duration: 230,
-    videochannel: "Sony Music South",
-    like: 4800000,
-    views: 550000000,
-    uploader: "sonymusicsouth"
-},
-{
-    videotitle: "Enjoy Enjaami",
-    filename: "enjoy-enjaami.mp4",
-    filepath: "https://www.youtube.com/embed/eYq7WapuDLU",
-    filetype: "video/mp4",
-    filesize: "105MB",
-    duration: 280,
-    videochannel: "Maajja",
-    like: 3500000,
-    views: 500000000,
-    uploader: "maajja"
-},
-{
-    videotitle: "Rowdy Baby - Maari 2",
-    filename: "rowdy-baby.mp4",
-    filepath: "https://www.youtube.com/embed/x6Q7c9RyMzk",
-    filetype: "video/mp4",
-    filesize: "130MB",
-    duration: 260,
-    videochannel: "Wunderbar Studios",
-    like: 7200000,
-    views: 1500000000,
-    uploader: "wunderbarstudios"
-},
-{
-    videotitle: "Tum Tum - Enemy",
-    filename: "tum-tum.mp4",
-    filepath: "https://www.youtube.com/embed/tYSrY4iPX6w",
-    filetype: "video/mp4",
-    filesize: "115MB",
+    filesize: "85MB",
     duration: 240,
-    videochannel: "Think Music India",
-    like: 3200000,
-    views: 400000000,
-    uploader: "thinkmusicindia"
-},
-{
-    videotitle: "Shape of You - Ed Sheeran",
-    filename: "shape-of-you.mp4",
-    filepath: "https://www.youtube.com/embed/JGwWNGJdvx8",
-    filetype: "video/mp4",
-    filesize: "120MB",
-    duration: 233,
-    videochannel: "Ed Sheeran",
-    like: 2500000,
-    views: 6200000000,
-    uploader: "edsheeran",
+    videochannel: "Tamil Hits",
+    like: 850000,
+    views: 45000000,
+    uploader: "tamilhits",
   },
 
   {
-    videotitle: "Baby Shark Dance",
-    filename: "baby-shark.mp4",
-    filepath: "https://www.youtube.com/embed/XqZsoesa55w",
+    videotitle: "Aale Saachuputta Kannala",
+    filename: "Aale Saachuputta Kannala.mp4",
+    filepath: "uploads/Aale Saachuputta Kannala.mp4",
     filetype: "video/mp4",
-    filesize: "90MB",
-    duration: 136,
-    videochannel: "Pinkfong",
-    like: 4100000,
-    views: 15000000000,
-    uploader: "pinkfong",
+    filesize: "60.5MB",
+    duration: 260,
+    videochannel: "Tamil Music",
+    like: 1200000,
+    views: 68000000,
+    uploader: "tamilmusic",
   },
 
   {
-    videotitle: "MrBeast - Last To Leave Circle Wins",
-    filename: "mrbeast-circle.mp4",
-    filepath: "https://www.youtube.com/embed/0e3GPea1Tyg",
+    videotitle: "Amali Thumali",
+    filename: "Amali Thumali.mp4",
+    filepath: "uploads/Amali Thumali.mp4",
     filetype: "video/mp4",
-    filesize: "200MB",
-    duration: 1210,
-    videochannel: "MrBeast",
-    like: 3800000,
-    views: 220000000,
-    uploader: "mrbeast",
-  },
-
-  {
-    videotitle: "Tom and Jerry Funny Compilation",
-    filename: "tom-jerry.mp4",
-    filepath: "https://www.youtube.com/embed/t0Q2otsqC4I",
-    filetype: "video/mp4",
-    filesize: "110MB",
-    duration: 603,
-    videochannel: "Cartoon Network",
-    like: 870000,
-    views: 98000000,
-    uploader: "cartoonnetwork",
-  },
-
-  {
-    videotitle: "Alan Walker - Faded",
-    filename: "faded.mp4",
-    filepath: "https://www.youtube.com/embed/60ItHLz5WEA",
-    filetype: "video/mp4",
-    filesize: "130MB",
-    duration: 213,
-    videochannel: "Alan Walker",
-    like: 4500000,
-    views: 3900000000,
-    uploader: "alanwalker",
-  },
-
-  {
-    videotitle: "Programming Tutorial for Beginners",
-    filename: "coding-tutorial.mp4",
-    filepath: "https://www.youtube.com/embed/zOjov-2OZ0E",
-    filetype: "video/mp4",
-    filesize: "160MB",
-    duration: 3600,
-    videochannel: "Programming with Mosh",
-    like: 920000,
-    views: 35000000,
-    uploader: "programmingwithmosh",
-  },
-
-  {
-    videotitle: "Stand Up Comedy Show",
-    filename: "comedy-show.mp4",
-    filepath: "https://www.youtube.com/embed/kX0vO4vlJuU",
-    filetype: "video/mp4",
-    filesize: "140MB",
-    duration: 1546,
-    videochannel: "Comedy Central",
-    like: 730000,
-    views: 28000000,
-    uploader: "comedycentral",
-  },
-  {
-    videotitle: "Cristiano Ronaldo Skills & Goals",
-    filename: "ronaldo-skills.mp4",
-    filepath: "https://www.youtube.com/embed/OUKGsb8CpF8",
-    filetype: "video/mp4",
-    filesize: "170MB",
-    duration: 612,
-    videochannel: "Football World",
+    filesize: "62.8MB",
+    duration: 285,
+    videochannel: "Sony Music South",
     like: 1800000,
     views: 120000000,
-    uploader: "footballworld",
+    uploader: "sonymusicsouth",
   },
 
   {
-    videotitle: "Marvel Avengers Final Battle",
-    filename: "avengers.mp4",
-    filepath: "https://www.youtube.com/embed/TcMBFSGVi1c",
+    videotitle: "Balleilakka",
+    filename: "Balleilakka.mp4",
+    filepath: "uploads/Balleilakka.mp4",
     filetype: "video/mp4",
-    filesize: "250MB",
-    duration: 286,
-    videochannel: "Marvel Entertainment",
-    like: 5200000,
-    views: 170000000,
-    uploader: "marvel",
+    filesize: "93.2MB",
+    duration: 300,
+    videochannel: "Sun Music",
+    like: 1400000,
+    views: 95000000,
+    uploader: "sunmusic",
+  },
+
+  {
+    videotitle: "Modern Building Architecture",
+    filename: "building1.mp4",
+    filepath: "uploads/building1.mp4",
+    filetype: "video/mp4",
+    filesize: "81MB",
+    duration: 90,
+    videochannel: "Architecture World",
+    like: 150000,
+    views: 5000000,
+    uploader: "architectureworld",
+  },
+
+  {
+    videotitle: "City Skyline Timelapse",
+    filename: "building2.mp4",
+    filepath: "uploads/building2.mp4",
+    filetype: "video/mp4",
+    filesize: "35MB",
+    duration: 11,
+    videochannel: "Urban View",
+    like: 180000,
+    views: 6200000,
+    uploader: "urbanview",
+  },
+
+  {
+    videotitle: "Coding Tutorial Part 1",
+    filename: "coding1.mp4",
+    filepath: "uploads/coding1.mp4",
+    filetype: "video/mp4",
+    filesize: "6.3MB",
+    duration: 14,
+    videochannel: "Code Master",
+    like: 420000,
+    views: 15000000,
+    uploader: "codemaster",
+  },
+
+  {
+    videotitle: "Coding Tutorial Part 2",
+    filename: "coding2.mp4",
+    filepath: "uploads/coding2.mp4",
+    filetype: "video/mp4",
+    filesize: "65.2MB",
+    duration: 25,
+    videochannel: "Code Master",
+    like: 510000,
+    views: 18000000,
+    uploader: "codemaster",
+  },
+
+  {
+    videotitle: "Naani Koni",
+    filename: "Naani Koni.mp4",
+    filepath: "uploads/Naani Koni.mp4",
+    filetype: "video/mp4",
+    filesize: "69.8MB",
+    duration: 5.5,
+    videochannel: "Aditya Music",
+    like: 1300000,
+    views: 89000000,
+    uploader: "adityamusic",
+  },
+
+  {
+    videotitle: "Nature Documentary",
+    filename: "nature1.mp4",
+    filepath: "uploads/nature1.mp4",
+    filetype: "video/mp4",
+    filesize: "44MB",
+    duration: 5560,
+    videochannel: "Nature World",
+    like: 320000,
+    views: 12000000,
+    uploader: "natureworld",
+  },
+
+  {
+    videotitle: "Beautiful Forest Views",
+    filename: "nature2.mp4",
+    filepath: "uploads/nature2.mp4",
+    filetype: "video/mp4",
+    filesize: "52MB",
+    duration: 5700,
+    videochannel: "Nature World",
+    like: 280000,
+    views: 10000000,
+    uploader: "natureworld",
+  },
+
+  {
+    videotitle: "Wildlife Cinematic",
+    filename: "nature3.mp4",
+    filepath: "uploads/nature3.mp4",
+    filetype: "video/mp4",
+    filesize: "139MB",
+    duration: 55,
+    videochannel: "Wild Earth",
+    like: 350000,
+    views: 14500000,
+    uploader: "wildearth",
   },
 ];
 
@@ -210,6 +194,15 @@ const addVideos = async () => {
       throw new Error("Replace the password placeholder in My_tube/server/.env before running addVideos.js");
     }
 
+    const missingVideos = YOUR_VIDEOS.filter(
+      (item) => !fs.existsSync(resolveUploadPath(item.filepath))
+    );
+    if (missingVideos.length) {
+      throw new Error(
+        `Missing video file(s): ${missingVideos.map((item) => item.filepath).join(", ")}`
+      );
+    }
+
     await mongoose.connect(DBURL, { serverSelectionTimeoutMS: 10000 });
     console.log("✅ Connected to MongoDB");
 
@@ -223,7 +216,13 @@ const addVideos = async () => {
     await video.bulkWrite(
       seedVideos.map((item) => ({
         updateOne: {
-          filter: { filepath: item.filepath },
+          filter: {
+            $or: [
+              { filepath: item.filepath },
+              { filename: item.filename },
+              { videotitle: item.videotitle },
+            ],
+          },
           update: { $set: item },
           upsert: true,
         },
@@ -231,11 +230,8 @@ const addVideos = async () => {
     );
 
     const staleVideos = await video.deleteMany({
+      seedOrder: { $gt: 0 },
       filepath: { $nin: seedFilepaths },
-      $or: [
-        { filepath: /^https:\/\/(?:www\.)?youtube\.com\/embed\// },
-        { filepath: /^https:\/\/youtu\.be\// },
-      ],
     });
 
     console.log(`✅ Successfully synced ${YOUR_VIDEOS.length} videos to database`);

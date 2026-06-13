@@ -44,12 +44,26 @@ export function getVideoThumbnailUrl(filepath?: string) {
   return "";
 }
 
-export function getVideoPreviewUrl(filepath?: string) {
+function getPreviewTime(duration?: number | string) {
+  const totalSeconds = Number(duration) || 0;
+
+  if (totalSeconds > 0 && totalSeconds <= 10) {
+    return Math.max(1, Math.min(totalSeconds - 0.5, totalSeconds / 2));
+  }
+
+  if (totalSeconds > 10 && totalSeconds <= 60) {
+    return Math.min(5, totalSeconds / 2);
+  }
+
+  return 12;
+}
+
+export function getVideoPreviewUrl(filepath?: string, duration?: number | string) {
   const mediaUrl = getMediaUrl(filepath);
 
   if (!mediaUrl || getYouTubeVideoId(filepath)) {
     return mediaUrl;
   }
 
-  return `${mediaUrl}#t=0.1`;
+  return `${mediaUrl}#t=${getPreviewTime(duration).toFixed(1)}`;
 }

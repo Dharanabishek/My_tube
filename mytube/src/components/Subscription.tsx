@@ -56,9 +56,6 @@ export default function Subscription() {
 
     setLoading(true);
     try {
-      const ok = await loadRazorpayScript();
-      if (!ok) throw new Error("Razorpay script failed to load");
-
       const resp = await axiosInstance.post("/payment/create-order", {
         planType: planKey,
         userId: user._id,
@@ -68,6 +65,9 @@ export default function Subscription() {
       if (!razorpayKeyId) {
         throw new Error("Razorpay key id is missing");
       }
+
+      const ok = await loadRazorpayScript();
+      if (!ok) throw new Error("Razorpay script failed to load");
 
       const options = {
         key: razorpayKeyId,
