@@ -178,4 +178,14 @@ RZP_KEY_SECRET=your_razorpay_secret
 
 ---
 
+## Author
 
+**Dharan Abishek L**
+- MCA Student, The American College
+- MERN Stack Developer
+
+---
+
+## License
+
+This project was developed for academic and internship purposes.
